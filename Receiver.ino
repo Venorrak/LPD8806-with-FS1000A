@@ -3,6 +3,7 @@
 #include "LPD8806.h"
 #include <Watchdog.h>
 
+//watchdog watches if the cpu is frozen
 Watchdog watchdog;
 const unsigned long SETUP_LED_ON_IF_NOT_TRIPPED_DURATION = 4000;
 const unsigned long SETUP_LED_ON_IF_TRIPPED_DURATION = 1500;
@@ -10,12 +11,16 @@ const unsigned long SETUP_LED_OFF_DURATION = 1000;
 
 const int nLEDs = 116;
 int nbLedInPart = 39;
+
+//create LPD8806 instance
 int dataPin = 2;
 int clockPin = 3;
 LPD8806 strip = LPD8806(nLEDs, dataPin, clockPin);
+
 unsigned long lt1 = 0;
 unsigned long lt2 = 0;
 unsigned long lt3 = 0;
+//sorry for the global variables, but it's the only way I make it work
 enum animations { KNIGHT_RIDER,
                   ONETWO,
                   RAINBOW,
@@ -39,18 +44,18 @@ int activeTime3 = 0;
 bool active1 = false;
 bool active2 = false;
 bool active3 = false;
-//--------------------------------------
+//-----knight_rider variables-----------
 int ledIndex1_Part1 = 0;
 int ledIndex2_Part1 = nbLedInPart;
 int ledIndex1_Part2 = nbLedInPart + 1;
 int ledIndex2_Part2 = nbLedInPart * 2;
 int ledIndex1_Part3 = (nbLedInPart * 2) + 1;
 int ledIndex2_Part3 = 116;
-//--------------------------------------
+//-------Flash variables----------------
 int lastFlash_Part1 = 0;
 int lastFlash_Part2 = 0;
 int lastFlash_Part3 = 0;
-//--------------------------------------
+//-------Splash variables---------------
 enum splashState { RANDOM,
                    STROB,
                    CLEAR };
@@ -66,7 +71,7 @@ bool ledState_Part3 = false;
 int timeStrob_Part1 = 0;
 int timeStrob_Part2 = 0;
 int timeStrob_Part3 = 0;
-//--------------------------------------
+//---------Rainbow variables--------------
 int offset = 0;
 const int multiple = 4;
 const int offsetDelta = 2;
@@ -90,6 +95,7 @@ int noStrob = 20;
 
 void setup() {
   Serial.begin(9600);
+  //watchdog setup
   pinMode(LED_BUILTIN, OUTPUT);
   if (!watchdog.tripped()) {
     // blink once to indicate power cycle reset
@@ -102,36 +108,50 @@ void setup() {
   }
   watchdog.enable(Watchdog::TIMEOUT_1S);
 
+  //initialize the strip
   strip.begin();
   strip.show();
+  //initialize the random seed
   randomSeed(analogRead(0));
 
+  //initialize the virtual wire
   vw_set_rx_pin(4);  //connect the receiver data pin to pin 12
   vw_setup(4000);    // speed of data transfer in bps, maxes out at 10000
   vw_rx_start();     // Start the receiver PLL running
 }
 
 void loop() {
+  //watchdog reset
   watchdog.reset();
   unsigned long ct = millis();
+  //get the message
   JsonDocument msg = getMessage();
   String msgTest = "";
+  //deserialize the message
   serializeJson(msg, msgTest);
+  //if the message is not null
   if (msgTest != "null") {
+    //print the message
     serializeJson(msg, Serial);
     Serial.println();
-
+    //get the values of the message(JSON format)
     effet = msg["e"];
     part = msg["p"];
-
+    //set the animation
     switch (part) {
       case 0:
+        //activate the animation to mesure the time since it's activated
         active1 = true;
+        //change the animation
         AnimPart1 = effet;
+        //change the color
         color1 = msg["c"];
+        //change the speed and convert it to milliseconds
         speedPart1 = msg["s"];
         speedPart1 = speedPart1 * 100;
+        //if the speed is 0, set it to 50ms
         if (speedPart1 == 0) { speedPart1 = 50; }
+        //reset the values of all the animation of the part
         resetAnimValues1();
         break;
       case 1:
@@ -153,9 +173,10 @@ void loop() {
         resetAnimValues3();
         break;
     }
-
+    //turn off the led in the part where the animation is changed or activated
     changeStrip(off, part);
   }
+  //count the time since the animation is activated
   if (active1) {
     activeTime1++;
   }
@@ -165,6 +186,7 @@ void loop() {
   if (active3) {
     activeTime3++;
   }
+  //play the animations at the right speed
   if (ct - lt1 > speedPart1) {
     switch (AnimPart1) {
       case KNIGHT_RIDER:
@@ -225,6 +247,7 @@ void loop() {
     }
     lt3 = ct;
   }
+  //if the time since the animation is activated is greater than the animation time, turn off the animation
   if (activeTime1 >= animationTime) {
     AnimPart1 = NONE;
     active1 = false;
@@ -242,6 +265,55 @@ void loop() {
   }
 }
 
+//reset the values of the animation in part 1
+void resetAnimValues1() {
+  ledIndex1_Part1 = 0;
+  ledIndex2_Part1 = nbLedInPart;
+  lastFlash_Part1 = 0;
+  SState_Part1 = RANDOM;
+  nbDone_Part1 = 0;
+  ledState_Part1 = false;
+  timeStrob_Part1 = 0;
+  activeTime1 = 0;
+}
+
+//reset the values of the animation in part 2
+void resetAnimValues2() {
+  ledIndex1_Part2 = nbLedInPart + 1;
+  ledIndex2_Part2 = nbLedInPart * 2;
+  lastFlash_Part2 = 0;
+  SState_Part2 = RANDOM;
+  nbDone_Part2 = 0;
+  ledState_Part2 = false;
+  timeStrob_Part2 = 0;
+  activeTime2 = 0;
+}
+
+//reset the values of the animation in part 3
+void resetAnimValues3() {
+  ledIndex1_Part3 = (nbLedInPart * 2) + 1;
+  ledIndex2_Part3 = 116;
+  lastFlash_Part3 = 0;
+  SState_Part3 = RANDOM;
+  nbDone_Part3 = 0;
+  ledState_Part3 = false;
+  timeStrob_Part3 = 0;
+  activeTime3 = 0;
+}
+
+// turn off the LED for watchdog
+void setLedOff() {
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(SETUP_LED_OFF_DURATION);
+}
+
+// turn on the LED for watchdog
+void setLedOn(unsigned long duration) {
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(duration);
+}
+
+//get the message from the receiver
 JsonDocument getMessage() {
   JsonDocument msg;
   uint8_t buf[VW_MAX_MESSAGE_LEN];
@@ -263,20 +335,23 @@ JsonDocument getMessage() {
   return msg;
 }
 
+//get segment length for the splash animation
 int getSegmentLength() {
   return random(minLength, maxLength);
 }
 
+//get the start of the segment for the splash animation
 int getSegmentLength(int modMaxLength) {
-  Serial.println("eille");
   return random(minLength, modMaxLength);
 }
 
+//get the start of the segment for the splash animation if the segment is too long
 int getSegmentStart(int currentPart) {
   int start = currentPart * nbLedInPart;
   return random(start, start + nbLedInPart);
 }
 
+//change the color of the strip in a part
 void changeStrip(uint32_t color, int currentPart) {
   int start = currentPart * nbLedInPart;
   for (int i = start; i < start + nbLedInPart; i++) {
@@ -284,18 +359,25 @@ void changeStrip(uint32_t color, int currentPart) {
   }
   strip.show();
 }
+//----------------------------------------------
+//-----------------ANIMATIONS-------------------
+//----------------------------------------------
 
 void knightRider(uint32_t currentColor, int currentPart) {
+  //switch the part to animate
   switch (currentPart) {
     case 0:
+      //set the color of the leds and the leds behind
       strip.setPixelColor(ledIndex2_Part1, currentColor);
       strip.setPixelColor(ledIndex2_Part1 + ledLength, off);
       strip.setPixelColor(ledIndex1_Part1, currentColor);
       strip.setPixelColor(ledIndex1_Part1 - ledLength, off);
+      //if the leds are at the end of the part, reset the values
       if (ledIndex1_Part1 >= 1 * nbLedInPart) {
         ledIndex1_Part1 = 0;
         ledIndex2_Part1 = nbLedInPart;
       }
+      //increment the leds position
       ledIndex1_Part1++;
       ledIndex2_Part1--;
       break;
@@ -328,6 +410,7 @@ void knightRider(uint32_t currentColor, int currentPart) {
 }
 
 void oneTwo(uint32_t currentColor, int currentPart) {
+  //decal is used to switch between odd and even leds
   static bool decal = false;
   for (int i = decal + (currentPart * nbLedInPart); i < (currentPart * nbLedInPart) + nbLedInPart; i++) {
     if (decal == true) {
@@ -349,8 +432,10 @@ void oneTwo(uint32_t currentColor, int currentPart) {
 }
 
 void flash(uint32_t currentColor, int currentPart) {
+  //get a random led in the part
   int n = random(currentPart * nbLedInPart, (currentPart * nbLedInPart) + nbLedInPart);
   strip.setPixelColor(n, currentColor);
+  //turn off the last led that was on depending on the part
   switch (currentPart) {
     case 0:
       strip.setPixelColor(lastFlash_Part1, off);
@@ -369,33 +454,42 @@ void flash(uint32_t currentColor, int currentPart) {
 }
 
 void splash(uint32_t currentColor, int currentPart) {
+  //switch the part to animate
   switch (currentPart) {
     case 0:
+    //switch the state of the animation
       switch (SState_Part1) {
         case RANDOM:
+          //get the start of the segment and the length of the segment
           static int start1;
           start1 = getSegmentStart(currentPart);
           static int segmentLength;
+          //if the segment is too long, change the maximum length of the segment
           if (((currentPart + 1) * nbLedInPart) - start1 < maxLength) {
             segmentLength = getSegmentLength(((currentPart + 1) * nbLedInPart) - start1);
           } else {
             segmentLength = getSegmentLength();
           }
+          //set the color of the leds in the segment
           for (int i = start1; i < start1 + segmentLength; i++) {
             strip.setPixelColor(i, currentColor);
           }
           strip.show();
+          //count the number of leds that are on
           for (int i = currentPart * nbLedInPart; i < (currentPart * nbLedInPart) + nbLedInPart; i++) {
             if (strip.getPixelColor(i) != off && strip.getPixelColor(i) != 0) {
               nbDone_Part1++;
             }
           }
+          //if all the leds are on, switch to the strob state
           if (nbDone_Part1 >= nbLedInPart - 1) {
             SState_Part1 = STROB;
           }
           nbDone_Part1 = 0;
           break;
         case STROB:
+
+          //turn on and off the leds
           if (ledState_Part1) {
             changeStrip(currentColor, currentPart);
             ledState_Part1 = !ledState_Part1;
@@ -403,13 +497,16 @@ void splash(uint32_t currentColor, int currentPart) {
             changeStrip(off, currentPart);
             ledState_Part1 = !ledState_Part1;
           }
+          //count the times the strob is done
           timeStrob_Part1++;
+          //if the strob is done the number of times set, switch to the clear state
           if (timeStrob_Part1 >= noStrob) {
             SState_Part1 = CLEAR;
             timeStrob_Part1 = 0;
           }
           break;
         case CLEAR:
+          //turn off the leds
           changeStrip(off, currentPart);
           //changeStrip(off, currentPart + 1);
           SState_Part1 = RANDOM;
@@ -538,50 +635,9 @@ uint32_t hsvToColour(unsigned int h, unsigned int s, unsigned int v) {
 
 void cycle(unsigned int offset, unsigned int s, unsigned int v, int currentPart) {
   unsigned int n;
+  // Cycle through the LEDs in the strip, setting the colour of each
   for (n = currentPart * nbLedInPart; n < (currentPart * nbLedInPart) + nbLedInPart; n++)
     strip.setPixelColor(n, hsvToColour(n * multiple + offset, s, v));
   strip.show();
 }
 
-void resetAnimValues1() {
-  ledIndex1_Part1 = 0;
-  ledIndex2_Part1 = nbLedInPart;
-  lastFlash_Part1 = 0;
-  SState_Part1 = RANDOM;
-  nbDone_Part1 = 0;
-  ledState_Part1 = false;
-  timeStrob_Part1 = 0;
-  activeTime1 = 0;
-}
-
-void resetAnimValues2() {
-  ledIndex1_Part2 = nbLedInPart + 1;
-  ledIndex2_Part2 = nbLedInPart * 2;
-  lastFlash_Part2 = 0;
-  SState_Part2 = RANDOM;
-  nbDone_Part2 = 0;
-  ledState_Part2 = false;
-  timeStrob_Part2 = 0;
-  activeTime2 = 0;
-}
-
-void resetAnimValues3() {
-  ledIndex1_Part3 = (nbLedInPart * 2) + 1;
-  ledIndex2_Part3 = 116;
-  lastFlash_Part3 = 0;
-  SState_Part3 = RANDOM;
-  nbDone_Part3 = 0;
-  ledState_Part3 = false;
-  timeStrob_Part3 = 0;
-  activeTime3 = 0;
-}
-
-void setLedOff() {
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(SETUP_LED_OFF_DURATION);
-}
-
-void setLedOn(unsigned long duration) {
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(duration);
-}
