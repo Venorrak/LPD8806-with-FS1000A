@@ -317,7 +317,7 @@ void knightRider(uint32_t currentColor, int currentPart) {
       strip.setPixelColor(ledIndex1_Part3, currentColor);
       strip.setPixelColor(ledIndex1_Part3 - ledLength, off);
       if (ledIndex1_Part3 >= 116) {
-        ledIndex1_Part3 = nbLedInPart + 1;
+        ledIndex1_Part3 = nbLedInPart * 2 + 1;
         ledIndex2_Part3 = 116;
       }
       ledIndex1_Part3++;
