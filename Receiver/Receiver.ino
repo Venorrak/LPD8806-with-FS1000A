@@ -151,6 +151,7 @@ void loop() {
     //get the values of the message(JSON format)
     effet = msg["e"];
     part = msg["p"];
+
     //set the animation
     switch (part) {
       case 0:
@@ -189,6 +190,17 @@ void loop() {
     }
     //turn off the led in the part where the animation is changed or activated
     changeStrip(off, part);
+
+#if DEBUG
+    Serial.print(F("Effect : "));
+    Serial.print(effet);
+    Serial.print(F("\tPart : "));
+    Serial.print(part);
+    Serial.print(F("\tmsg[c] : "));
+    Serial.print((uint32_t)msg["c"]);
+    Serial.print(F("\tmsg[s] : "));
+    Serial.println((int)msg["s"]);
+#endif
   }
   //count the time since the animation is activated
   if (active1) {
@@ -452,19 +464,19 @@ void oneTwo(uint32_t currentColor, int currentPart) {
 void flash(uint32_t currentColor, int currentPart) {
   //get a random led in the part
   int n = random(currentPart * nbLedInPart, (currentPart * nbLedInPart) + nbLedInPart);
-  strip.setPixelColor(n, currentColor);
+  strip.setPixelColorRGB(n, currentColor);
   //turn off the last led that was on depending on the part
   switch (currentPart) {
     case 0:
-      strip.setPixelColor(lastFlash_Part1, off);
+      strip.setPixelColorRGB(lastFlash_Part1, off);
       lastFlash_Part1 = n;
       break;
     case 1:
-      strip.setPixelColor(lastFlash_Part2, off);
+      strip.setPixelColorRGB(lastFlash_Part2, off);
       lastFlash_Part2 = n;
       break;
     case 2:
-      strip.setPixelColor(lastFlash_Part3, off);
+      strip.setPixelColorRGB(lastFlash_Part3, off);
       lastFlash_Part3 = n;
       break;
   }
