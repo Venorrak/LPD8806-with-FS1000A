@@ -2,15 +2,27 @@
 #ifndef __RADIO_H__
 #define __RADIO_H__
 
+#define RADIOHEAD
+
 #include "HardwareSerial.h"
 #include <stdint.h>
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <VirtualWire.h>
 
+#ifdef RADIOHEAD
+#include <RH_ASK.h>
+#ifdef RH_HAVE_HARDWARE_SPI
+#include <SPI.h>  // Not actually used but needed to compile
+#endif
+#else
+#include <VirtualWire.h>
+#endif
 
 class Radio {
 public:
+  Radio(uint16_t speed = 2000, uint8_t pin = 11) : driver (speed, pin, pin) {
+
+  }
 
   void sendMessage(uint8_t effet, uint32_t color, uint8_t speed, uint8_t part) {
     //add info to json document
@@ -25,8 +37,10 @@ public:
     _part = part;
     serializeJson(doc, _msg);
     //send message on radio module
-    vw_send((uint8_t *)_msg, strlen(_msg));
-    vw_wait_tx();
+
+    driver.send((uint8_t *)_msg, strlen(_msg));
+    driver.waitPacketSent();
+
     //print sent message
     Serial.print(_msg);
     Serial.println("sent");
@@ -34,8 +48,8 @@ public:
 
   void sendLastMessage() {
     //send message on radio module
-    vw_send((uint8_t *)_msg, strlen(_msg));
-    vw_wait_tx();
+    driver.send((uint8_t *)_msg, strlen(_msg));
+    driver.waitPacketSent();
     //print sent message
     Serial.print(_msg);
     Serial.println("sent");
@@ -59,20 +73,10 @@ public:
     return RGB;
   };
 
-  void begin(uint8_t radioPin, uint16_t dataTransferSpeed) {
-    vw_set_tx_pin(radioPin);      // 12 by default
-    vw_setup(dataTransferSpeed);  // speed of data transfer in bps, can max out at 10000 (4000)
+  bool begin() {
+    return driver.init();
   }
 
-  void led(){
-    //status led for when the radio is sending a message
-    if (vw_tx_active()){
-      digitalWrite(13, HIGH);
-    }
-    else {
-      digitalWrite(13, LOW);
-    }
-  }
 private:
   JsonDocument doc;
   uint8_t _effet;
@@ -81,6 +85,7 @@ private:
   uint8_t _part;
   char _msg[32];
   uint32_t RGB;
+  RH_ASK driver;
 };
 
 #endif

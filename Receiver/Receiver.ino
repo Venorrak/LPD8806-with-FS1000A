@@ -1,10 +1,18 @@
-#include <VirtualWire.h>
 #include <ArduinoJson.h>
 #include "LPD8806.h"
 #include <Watchdog.h>
 
+#include <RH_ASK.h>
+#ifdef RH_HAVE_HARDWARE_SPI
+#include <SPI.h> // Not actually used but needed to compile
+#endif
+
+#define DEBUG 1
+
+RH_ASK driver(4000, 4, 4);
+
 //watchdog watches if the cpu is frozen
-Watchdog watchdog;
+//Watchdog watchdog;
 const unsigned long SETUP_LED_ON_IF_NOT_TRIPPED_DURATION = 4000;
 const unsigned long SETUP_LED_ON_IF_TRIPPED_DURATION = 1500;
 const unsigned long SETUP_LED_OFF_DURATION = 1000;
@@ -97,16 +105,22 @@ void setup() {
   Serial.begin(9600);
   //watchdog setup
   pinMode(LED_BUILTIN, OUTPUT);
-  if (!watchdog.tripped()) {
-    // blink once to indicate power cycle reset
-    setLedOn(SETUP_LED_ON_IF_NOT_TRIPPED_DURATION);
-  } else {
-    // blink twice to indicate watchdog tripped reset
-    setLedOn(SETUP_LED_ON_IF_TRIPPED_DURATION);
-    setLedOff();
-    setLedOn(SETUP_LED_ON_IF_TRIPPED_DURATION);
+  // if (!watchdog.tripped()) {
+  //   // blink once to indicate power cycle reset
+  //   setLedOn(SETUP_LED_ON_IF_NOT_TRIPPED_DURATION);
+  //   setLedOff();
+  // } else {
+  //   // blink twice to indicate watchdog tripped reset
+  //   for (int i = 0; i < 10; i++) {
+  //     setLedOn(500);
+  //     digitalWrite(LED_BUILTIN, 500);
+  //   }
+  // }
+  // watchdog.enable(Watchdog::TIMEOUT_1S);
+
+  if (!driver.init()) {
+    Serial.println("init failed");
   }
-  watchdog.enable(Watchdog::TIMEOUT_1S);
 
   //initialize the strip
   strip.begin();
@@ -114,15 +128,15 @@ void setup() {
   //initialize the random seed
   randomSeed(analogRead(0));
 
-  //initialize the virtual wire
-  vw_set_rx_pin(4);  //connect the receiver data pin to pin 12
-  vw_setup(4000);    // speed of data transfer in bps, maxes out at 10000
-  vw_rx_start();     // Start the receiver PLL running
+  // //initialize the virtual wire
+  // vw_set_rx_pin(4);  //connect the receiver data pin to pin 12
+  // vw_setup(4000);    // speed of data transfer in bps, maxes out at 10000
+  // vw_rx_start();     // Start the receiver PLL running
 }
 
 void loop() {
   //watchdog reset
-  watchdog.reset();
+  //watchdog.reset();
   unsigned long ct = millis();
   //get the message
   JsonDocument msg = getMessage();
@@ -263,6 +277,8 @@ void loop() {
     active3 = false;
     changeStrip(off, 2);
   }
+  
+  blinkTask(2000);
 }
 
 //reset the values of the animation in part 1
@@ -316,10 +332,12 @@ void setLedOn(unsigned long duration) {
 //get the message from the receiver
 JsonDocument getMessage() {
   JsonDocument msg;
-  uint8_t buf[VW_MAX_MESSAGE_LEN];
-  uint8_t buflen = VW_MAX_MESSAGE_LEN;
-  if (vw_get_message(buf, &buflen))  // if we get a message that we recognize on this buffer...
+  uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
+  uint8_t buflen = sizeof(buf);
+
+  if (driver.recv(buf, &buflen))  // if we get a message that we recognize on this buffer...
   {
+    driver.printBuffer("Got:", buf, buflen);
     String Json = "";
     for (int i = 0; i < buflen; i++) {
       Json += (char)buf[i];  // fill the string with the data received
@@ -457,7 +475,7 @@ void splash(uint32_t currentColor, int currentPart) {
   //switch the part to animate
   switch (currentPart) {
     case 0:
-    //switch the state of the animation
+      //switch the state of the animation
       switch (SState_Part1) {
         case RANDOM:
           //get the start of the segment and the length of the segment
@@ -641,3 +659,48 @@ void cycle(unsigned int offset, unsigned int s, unsigned int v, int currentPart)
   strip.show();
 }
 
+void heartBeatTask() {
+  static unsigned long lastTime = 0;
+  static int rate = 5;
+  static int fade = 0;
+
+  if (millis() - lastTime > rate) {
+
+    lastTime = millis();
+
+    analogWrite(LED_BUILTIN, fade);
+
+    if (fade < 0 || fade > 250 ) {
+      rate = -rate;
+    }
+    fade += rate;
+
+#if DEBUG
+    Serial.print(millis());
+    Serial.print(" : Fade values : ");
+    Serial.print(fade);
+    Serial.print(" -> ");
+    Serial.println(rate);
+    delay(10);
+#endif
+  }
+}
+
+void blinkTask(int rate) {
+  static unsigned long lastTime = 0;
+  static int ledState = 0;
+
+  if (millis() - lastTime < rate) return;
+
+  lastTime = millis();
+
+  digitalWrite(LED_BUILTIN, ledState);
+  ledState = !ledState;
+
+  #if DEBUG
+    Serial.print(millis());
+    Serial.print(" : Blinking : ");
+    Serial.println(ledState);
+    delay(10);
+#endif
+}
