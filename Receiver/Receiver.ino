@@ -385,7 +385,7 @@ int getSegmentStart(int currentPart) {
 void changeStrip(uint32_t color, int currentPart) {
   int start = currentPart * nbLedInPart;
   for (int i = start; i < start + nbLedInPart; i++) {
-    strip.setPixelColor(i, color);
+    strip.setPixelColorRGB(i, color);
   }
   strip.show();
 }
@@ -398,10 +398,10 @@ void knightRider(uint32_t currentColor, int currentPart) {
   switch (currentPart) {
     case 0:
       //set the color of the leds and the leds behind
-      strip.setPixelColor(ledIndex2_Part1, currentColor);
-      strip.setPixelColor(ledIndex2_Part1 + ledLength, off);
-      strip.setPixelColor(ledIndex1_Part1, currentColor);
-      strip.setPixelColor(ledIndex1_Part1 - ledLength, off);
+      strip.setPixelColorRGB(ledIndex2_Part1, currentColor);
+      strip.setPixelColorRGB(ledIndex2_Part1 + ledLength, off);
+      strip.setPixelColorRGB(ledIndex1_Part1, currentColor);
+      strip.setPixelColorRGB(ledIndex1_Part1 - ledLength, off);
       //if the leds are at the end of the part, reset the values
       if (ledIndex1_Part1 >= 1 * nbLedInPart) {
         ledIndex1_Part1 = 0;
@@ -412,10 +412,10 @@ void knightRider(uint32_t currentColor, int currentPart) {
       ledIndex2_Part1--;
       break;
     case 1:
-      strip.setPixelColor(ledIndex2_Part2, currentColor);
-      strip.setPixelColor(ledIndex2_Part2 + ledLength, off);
-      strip.setPixelColor(ledIndex1_Part2, currentColor);
-      strip.setPixelColor(ledIndex1_Part2 - ledLength, off);
+      strip.setPixelColorRGB(ledIndex2_Part2, currentColor);
+      strip.setPixelColorRGB(ledIndex2_Part2 + ledLength, off);
+      strip.setPixelColorRGB(ledIndex1_Part2, currentColor);
+      strip.setPixelColorRGB(ledIndex1_Part2 - ledLength, off);
       if (ledIndex1_Part2 >= 2 * nbLedInPart) {
         ledIndex1_Part2 = nbLedInPart + 1;
         ledIndex2_Part2 = nbLedInPart * 2;
@@ -424,10 +424,10 @@ void knightRider(uint32_t currentColor, int currentPart) {
       ledIndex2_Part2--;
       break;
     case 2:
-      strip.setPixelColor(ledIndex2_Part3, currentColor);
-      strip.setPixelColor(ledIndex2_Part3 + ledLength, off);
-      strip.setPixelColor(ledIndex1_Part3, currentColor);
-      strip.setPixelColor(ledIndex1_Part3 - ledLength, off);
+      strip.setPixelColorRGB(ledIndex2_Part3, currentColor);
+      strip.setPixelColorRGB(ledIndex2_Part3 + ledLength, off);
+      strip.setPixelColorRGB(ledIndex1_Part3, currentColor);
+      strip.setPixelColorRGB(ledIndex1_Part3 - ledLength, off);
       if (ledIndex1_Part3 >= 116) {
         ledIndex1_Part3 = nbLedInPart * 2 + 1;
         ledIndex2_Part3 = 116;
@@ -445,15 +445,15 @@ void oneTwo(uint32_t currentColor, int currentPart) {
   for (int i = decal + (currentPart * nbLedInPart); i < (currentPart * nbLedInPart) + nbLedInPart; i++) {
     if (decal == true) {
       if (i % 2 != 0) {
-        strip.setPixelColor(i, currentColor);
+        strip.setPixelColorRGB(i, currentColor);
       } else {
-        strip.setPixelColor(i, off);
+        strip.setPixelColorRGB(i, off);
       }
     } else {
       if (i % 2 == 0) {
-        strip.setPixelColor(i, currentColor);
+        strip.setPixelColorRGB(i, currentColor);
       } else {
-        strip.setPixelColor(i, off);
+        strip.setPixelColorRGB(i, off);
       }
     }
   }
@@ -502,7 +502,7 @@ void splash(uint32_t currentColor, int currentPart) {
           }
           //set the color of the leds in the segment
           for (int i = start1; i < start1 + segmentLength; i++) {
-            strip.setPixelColor(i, currentColor);
+            strip.setPixelColorRGB(i, currentColor);
           }
           strip.show();
           //count the number of leds that are on
@@ -549,7 +549,7 @@ void splash(uint32_t currentColor, int currentPart) {
           static int start2;
           start2 = getSegmentStart(currentPart);
           for (int i = start2; i < start2 + getSegmentLength(); i++) {
-            strip.setPixelColor(i, currentColor);
+            strip.setPixelColorRGB(i, currentColor);
           }
           strip.show();
           for (int i = currentPart * nbLedInPart; i < (currentPart * nbLedInPart) + nbLedInPart; i++) {
@@ -588,7 +588,7 @@ void splash(uint32_t currentColor, int currentPart) {
           static int start3;
           start3 = getSegmentStart(currentPart);
           for (int i = start3; i < start3 + getSegmentLength(); i++) {
-            strip.setPixelColor(i, currentColor);
+            strip.setPixelColorRGB(i, currentColor);
           }
           strip.show();
           for (int i = currentPart * nbLedInPart; i < (currentPart * nbLedInPart) + nbLedInPart; i++) {
