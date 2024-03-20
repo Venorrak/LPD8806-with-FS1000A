@@ -8,8 +8,22 @@
 #endif
 
 #define DEBUG 1
+#define RADIO_SP 4000
+#define RADIO_RX 4
+#define RADIO_TX 4
 
-RH_ASK driver(4000, 4, 4);
+enum animations { KNIGHT_RIDER,
+                  ONETWO,
+                  RAINBOW,
+                  FLASH,
+                  SPLASH,
+                  NONE };
+
+enum splashState { RANDOM,
+                   STROB,
+                   CLEAR };
+                   
+RH_ASK driver(RADIO_SP, RADIO_RX, RADIO_TX);
 
 //watchdog watches if the cpu is frozen
 //Watchdog watchdog;
@@ -25,16 +39,34 @@ int dataPin = 2;
 int clockPin = 3;
 LPD8806 strip = LPD8806(nLEDs, dataPin, clockPin);
 
+struct AnimationPart {
+  unsigned long lastTime = 0;
+  animations anim = NONE;
+  uint32_t color = 0x000000;
+  int speed = 0;
+  int activeTime = 0;
+  bool active = false;
+  int ledIndex1 = 0;
+  int ledIndex2 = 0; // Cette valeur peut être initialisée après, selon nbLedInPart
+  int lastFlash = 0;
+  splashState sState = RANDOM;
+  int nbDone = 0;
+  bool ledState = false;
+  int timeStrob = 0;
+};
+
+// Définition du nombre de parties
+const int numberOfParts = 3;
+
+// Création d'un tableau de structures pour gérer chaque partie
+AnimationPart parts[numberOfParts];
+
+
 unsigned long lt1 = 0;
 unsigned long lt2 = 0;
 unsigned long lt3 = 0;
 //sorry for the global variables, but it's the only way I make it work
-enum animations { KNIGHT_RIDER,
-                  ONETWO,
-                  RAINBOW,
-                  FLASH,
-                  SPLASH,
-                  NONE };
+
 animations AnimPart1 = NONE;
 animations AnimPart2 = NONE;
 animations AnimPart3 = NONE;
@@ -64,9 +96,7 @@ int lastFlash_Part1 = 0;
 int lastFlash_Part2 = 0;
 int lastFlash_Part3 = 0;
 //-------Splash variables---------------
-enum splashState { RANDOM,
-                   STROB,
-                   CLEAR };
+
 splashState SState_Part1 = RANDOM;
 splashState SState_Part2 = RANDOM;
 splashState SState_Part3 = RANDOM;
