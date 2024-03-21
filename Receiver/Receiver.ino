@@ -1,3 +1,9 @@
+// TODO
+// - Valider la dimension du data reçu avant de traiter le json
+// - Confirmation de message reçu (Serial.print, blink X, etc.)
+// - Ajouter une durée d'affichage?
+// - Remapper les couleurs avec l'espace 8 bit. Exemple rgb565
+
 #include <ArduinoJson.h>
 #include "LPD8806.h"
 #include <Watchdog.h>
@@ -23,7 +29,7 @@ enum splashState { RANDOM,
                    STROB,
                    CLEAR };
                    
-RH_ASK driver(RADIO_SP, RADIO_RX, RADIO_TX);
+RH_ASK receiver(RADIO_SP, RADIO_RX, RADIO_TX);
 
 //watchdog watches if the cpu is frozen
 //Watchdog watchdog;
@@ -62,6 +68,8 @@ const int numberOfParts = 3;
 AnimationPart parts[numberOfParts];
 
 
+
+// Last time
 unsigned long lt1 = 0;
 unsigned long lt2 = 0;
 unsigned long lt3 = 0;
@@ -148,7 +156,7 @@ void setup() {
   // }
   // watchdog.enable(Watchdog::TIMEOUT_1S);
 
-  if (!driver.init()) {
+  if (!receiver.init()) {
     Serial.println("init failed");
   }
 
@@ -377,9 +385,9 @@ JsonDocument getMessage() {
   uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
   uint8_t buflen = sizeof(buf);
 
-  if (driver.recv(buf, &buflen))  // if we get a message that we recognize on this buffer...
+  if (receiver.recv(buf, &buflen))  // if we get a message that we recognize on this buffer...
   {
-    driver.printBuffer("Got:", buf, buflen);
+    receiver.printBuffer("Got:", buf, buflen);
     String Json = "";
     for (int i = 0; i < buflen; i++) {
       Json += (char)buf[i];  // fill the string with the data received

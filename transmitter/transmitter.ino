@@ -1,5 +1,10 @@
+// TODO
+// - Ajouter des capteurs
+// - Réduire l'espace de couleur
+//   - Exemple : rgb565
 #include <ArduinoJson.h>
 #include "radio.h"
+#include <limits.h>
 
 #define RADIO_PIN 12
 #define IR_PIN 4
@@ -63,15 +68,13 @@ void objectTask() {
   irCurrent = digitalRead(IR_PIN);
 
   if (!irCurrent && irCurrent != irPrevious) {
-    radio.sendMessage(3, 0xFF << 16 | 0x00 << 8 | 0x00, 1, 3);
+    radio.sendMessage(0, ULONG_MAX, 1, 3);
 
     Serial.print(currentTime);
     Serial.println(" - Object detected");
   }
 
   irPrevious = irCurrent;
-
-
 }
 
 
